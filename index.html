@@ -1,0 +1,2658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#059669">
+    <title>My Book Pro - Digital Ledger</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Chart.js for advanced charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #f3f4f6;
+            --bg-secondary: white;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-color: #059669;
+            --accent-gradient: linear-gradient(135deg, #059669 0%, #047857 100%);
+            --danger-color: #dc2626;
+            --warning-color: #f59e0b;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --accent-color: #10b981;
+            --accent-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding-bottom: 100px;
+            transition: background 0.3s, color 0.3s;
+        }
+        
+        .header {
+            background: var(--accent-gradient);
+            color: white;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .header-status {
+            font-size: 12px;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .sync-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .balance-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 16px;
+        }
+        
+        .balance-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .balance-card.profit { border-left: 4px solid var(--accent-color); }
+        .balance-card.debt { border-left: 4px solid var(--danger-color); }
+        
+        .balance-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        
+        .balance-amount {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        
+        .positive { color: var(--accent-color); }
+        .negative { color: var(--danger-color); }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 0 16px 16px;
+        }
+        
+        .action-btn {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        
+        .action-btn:active { transform: scale(0.98); }
+        .action-btn.sell { border-color: var(--accent-color); background: rgba(5, 150, 105, 0.1); }
+        .action-btn.buy { border-color: var(--danger-color); background: rgba(220, 38, 38, 0.1); }
+        .action-btn.voice { border-color: #7c3aed; background: rgba(124, 58, 237, 0.1); grid-column: 1 / -1; }
+        
+        .action-icon { font-size: 32px; margin-bottom: 8px; }
+        .action-text { font-weight: 600; font-size: 16px; }
+        
+        .section-header {
+            padding: 20px 16px 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .share-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .search-bar {
+            padding: 0 16px 12px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        
+        .transaction-list, .debt-list {
+            padding: 0 16px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .transaction-item, .debt-item {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .item-info h3 {
+            font-size: 15px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .item-amount {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .income { color: var(--accent-color); }
+        .expense { color: var(--danger-color); }
+        
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 8px;
+        }
+        
+        .item-btn {
+            background: var(--bg-primary);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .item-btn.edit { color: var(--accent-color); }
+        .item-btn.delete { color: var(--danger-color); }
+        .item-btn.pay { color: var(--warning-color); }
+        
+        .category-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+        }
+        
+        .filter-tabs {
+            display: flex;
+            padding: 0 16px;
+            gap: 8px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+        }
+        
+        .filter-tab {
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            white-space: nowrap;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        
+        .filter-tab.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        
+        .report-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .report-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .report-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        
+        .chart-container {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            height: 250px;
+            position: relative;
+        }
+        
+        .chart-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            justify-content: center;
+        }
+        
+        .chart-tab {
+            padding: 6px 12px;
+            background: var(--bg-primary);
+            border: none;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        
+        .chart-tab.active {
+            background: var(--accent-color);
+            color: white;
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0 20px;
+            box-shadow: 0 -4px 6px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        
+        .nav-item.active { color: var(--accent-color); }
+        .nav-icon { font-size: 24px; display: block; margin-bottom: 2px; }
+        .nav-label { font-size: 11px; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: var(--bg-secondary);
+            width: 100%;
+            max-height: 90vh;
+            border-radius: 24px 24px 0 0;
+            padding: 24px;
+            animation: slideUp 0.3s ease-out;
+            overflow-y: auto;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        
+        .close-btn {
+            background: var(--bg-primary);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        
+        .form-group { margin-bottom: 20px; }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        
+        .voice-btn {
+            width: 100%;
+            padding: 20px;
+            background: #7c3aed;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        
+        .voice-btn.listening {
+            background: var(--danger-color);
+            animation: pulse 1s infinite;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .hidden { display: none !important; }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .secondary-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        
+        .danger-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        
+        .date-header {
+            padding: 12px 16px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 14px;
+            background: var(--bg-primary);
+            margin: 8px 16px;
+            border-radius: 8px;
+        }
+        
+        /* Settings Page Styles */
+        .settings-section {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            margin: 0 16px 16px;
+            padding: 16px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .settings-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+        
+        .settings-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+        
+        .settings-icon {
+            font-size: 20px;
+        }
+        
+        .toggle-switch {
+            width: 50px;
+            height: 28px;
+            background: var(--border-color);
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: var(--accent-color);
+        }
+        
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active::after {
+            transform: translateX(22px);
+        }
+        
+        /* Profile Selector */
+        .profile-selector {
+            display: flex;
+            gap: 12px;
+            padding: 0 16px 16px;
+            overflow-x: auto;
+        }
+        
+        .profile-chip {
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .profile-chip.active {
+            border-color: var(--accent-color);
+            background: rgba(5, 150, 105, 0.1);
+        }
+        
+        .profile-chip .delete-profile {
+            font-size: 12px;
+            color: var(--danger-color);
+        }
+        
+        /* Recurring Badge */
+        .recurring-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: rgba(124, 58, 237, 0.1);
+            color: #7c3aed;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        
+        /* Payment Progress */
+        .payment-progress {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .payment-progress-bar {
+            height: 100%;
+            background: var(--accent-color);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        
+        /* Export/Import Buttons */
+        .export-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 0 16px 16px;
+        }
+        
+        .export-btn {
+            padding: 16px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        
+        .export-btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary);
+            color: var(--bg-secondary);
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            z-index: 300;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        /* Category Colors */
+        .cat-general { background: rgba(107, 114, 128, 0.2); color: #6b7280; }
+        .cat-food { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .cat-transport { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .cat-shopping { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
+        .cat-bills { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+        .cat-salary { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .cat-business { background: rgba(5, 150, 105, 0.2); color: #059669; }
+        .cat-other { background: rgba(107, 114, 128, 0.2); color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>📒 My Book Pro</h1>
+            <div class="header-actions">
+                <button class="header-btn" onclick="openSettingsModal()" title="Settings">⚙️</button>
+                <button class="header-btn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+            </div>
+        </div>
+        <div class="header-status">
+            <span class="sync-indicator"></span>
+            <span id="syncStatus">Local mode</span>
+            <span id="currentProfile" style="margin-left: auto; font-weight: 500;"></span>
+        </div>
+    </div>
+    
+    <!-- Profile Selector -->
+    <div class="profile-selector" id="profileSelector"></div>
+    
+    <!-- HOME PAGE -->
+    <div class="page active" id="homePage">
+        <div class="balance-container">
+            <div class="balance-card profit">
+                <div class="balance-label">Today's Profit</div>
+                <div class="balance-amount positive" id="todayProfit">₦0</div>
+            </div>
+            <div class="balance-card debt">
+                <div class="balance-label">Money Owed</div>
+                <div class="balance-amount negative" id="totalDebt">₦0</div>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <div class="action-btn sell" onclick="openModal('sell')">
+                <div class="action-icon">💰</div>
+                <div class="action-text">I Sold</div>
+            </div>
+            <div class="action-btn buy" onclick="openModal('buy')">
+                <div class="action-icon">🛒</div>
+                <div class="action-text">I Bought</div>
+            </div>
+            <div class="action-btn voice" onclick="openVoiceModal()">
+                <div class="action-icon">🎤</div>
+                <div class="action-text">Tap & Speak</div>
+            </div>
+        </div>
+        
+        <div class="section-header">
+            <span>Today's Transactions</span>
+            <button class="share-btn" onclick="shareWhatsApp()">Share 📱</button>
+        </div>
+        
+        <div class="transaction-list" id="transactionList">
+            <div class="empty-state">No transactions yet</div>
+        </div>
+        
+        <div class="section-header">
+            <span>Debtors</span>
+            <span style="color: var(--accent-color); cursor: pointer;" onclick="openDebtModal()">+ Add</span>
+        </div>
+        
+        <div class="debt-list" id="debtList">
+            <div class="empty-state">No debts recorded</div>
+        </div>
+    </div>
+    
+    <!-- HISTORY PAGE -->
+    <div class="page" id="historyPage">
+        <div class="section-header">
+            <span>All Transactions</span>
+        </div>
+        
+        <div class="search-bar">
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search transactions..." oninput="searchTransactions()">
+        </div>
+        
+        <div class="filter-tabs">
+            <div class="filter-tab active" onclick="filterHistory('all')">All</div>
+            <div class="filter-tab" onclick="filterHistory('sell')">Sales</div>
+            <div class="filter-tab" onclick="filterHistory('buy')">Purchases</div>
+            <div class="filter-tab" onclick="filterHistory('debt')">Debts</div>
+        </div>
+        
+        <div id="historyList"></div>
+    </div>
+    
+    <!-- REPORTS PAGE -->
+    <div class="page" id="reportsPage">
+        <div class="section-header">
+            <span>Business Reports</span>
+            <select id="reportPeriod" onchange="updateReports()" style="padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+            </select>
+        </div>
+        
+        <div class="report-card">
+            <div class="report-title">Total Sales</div>
+            <div class="report-value positive" id="reportSales">₦0</div>
+        </div>
+        
+        <div class="report-card">
+            <div class="report-title">Total Expenses</div>
+            <div class="report-value negative" id="reportExpenses">₦0</div>
+        </div>
+        
+        <div class="report-card">
+            <div class="report-title">Net Profit</div>
+            <div class="report-value" id="reportProfit">₦0</div>
+        </div>
+        
+        <div class="report-card">
+            <div class="report-title">Total Debts Owed</div>
+            <div class="report-value negative" id="reportDebts">₦0</div>
+        </div>
+        
+        <div class="chart-tabs">
+            <button class="chart-tab active" onclick="switchChart('weekly')">Weekly</button>
+            <button class="chart-tab" onclick="switchChart('monthly')">Monthly</button>
+            <button class="chart-tab" onclick="switchChart('category')">Categories</button>
+        </div>
+        
+        <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+        </div>
+        
+        <button class="share-btn" onclick="shareReport()" style="width: calc(100% - 32px); margin: 0 16px 20px; padding: 16px; font-size: 16px;">
+            Share Full Report on WhatsApp
+        </button>
+    </div>
+    
+    <!-- SETTINGS PAGE -->
+    <div class="page" id="settingsPage">
+        <div class="section-header">
+            <span>Settings</span>
+        </div>
+        
+        <div class="settings-section">
+            <div class="settings-title">Data Management</div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span class="settings-icon">💾</span>
+                    <span>Export Data</span>
+                </div>
+                <button class="share-btn" onclick="openExportModal()">Export</button>
+            </div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span class="settings-icon">📥</span>
+                    <span>Import Data</span>
+                </div>
+                <button class="share-btn" onclick="openImportModal()">Import</button>
+            </div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span class="settings-icon">🔄</span>
+                    <span>Recurring Transactions</span>
+                </div>
+                <button class="share-btn" onclick="openRecurringModal()">Manage</button>
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <div class="settings-title">Appearance</div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span class="settings-icon">🌙</span>
+                    <span>Dark Mode</span>
+                </div>
+                <div class="toggle-switch" id="darkModeToggle" onclick="toggleTheme()"></div>
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <div class="settings-title">Notifications</div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span class="settings-icon">🔔</span>
+                    <span>Debt Reminders</span>
+                </div>
+                <div class="toggle-switch" id="notificationToggle" onclick="toggleNotifications()"></div>
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <div class="settings-title">Profiles</div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span class="settings-icon">👤</span>
+                    <span>Manage Profiles</span>
+                </div>
+                <button class="share-btn" onclick="openProfileModal()">Manage</button>
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <div class="settings-title">Danger Zone</div>
+            <div class="settings-item">
+                <div class="settings-label">
+                    <span class="settings-icon">🗑️</span>
+                    <span>Clear All Data</span>
+                </div>
+                <button class="danger-btn" onclick="clearAllData()" style="width: auto; padding: 8px 16px; margin: 0;">Clear</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="showPage('home')">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Home</span>
+        </div>
+        <div class="nav-item" onclick="showPage('history')">
+            <span class="nav-icon">📜</span>
+            <span class="nav-label">History</span>
+        </div>
+        <div class="nav-item" onclick="showPage('reports')">
+            <span class="nav-icon">📈</span>
+            <span class="nav-label">Reports</span>
+        </div>
+        <div class="nav-item" onclick="showPage('settings')">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+        </div>
+    </div>
+    
+    <!-- Transaction Modal -->
+    <div class="modal" id="transactionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">New Sale</span>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">What?</label>
+                <input type="text" class="form-input" id="itemName" placeholder="e.g., Bag of Rice">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Amount (₦)</label>
+                <input type="number" class="form-input" id="itemAmount" placeholder="0">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="itemCategory">
+                    <option value="general">General</option>
+                    <option value="food">Food & Groceries</option>
+                    <option value="transport">Transport</option>
+                    <option value="shopping">Shopping</option>
+                    <option value="bills">Bills & Utilities</option>
+                    <option value="salary">Salary</option>
+                    <option value="business">Business</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="isDebt" onchange="toggleDebtName()">
+                <label for="isDebt">This is credit/debt</label>
+            </div>
+            
+            <div class="form-group hidden" id="debtNameGroup">
+                <label class="form-label">Person Name</label>
+                <input type="text" class="form-input" id="debtorName" placeholder="Who owes you?">
+            </div>
+            
+            <div class="checkbox-group" id="recurringGroup">
+                <input type="checkbox" id="isRecurring" onchange="toggleRecurringOptions()">
+                <label for="isRecurring">Make this recurring</label>
+            </div>
+            
+            <div class="form-group hidden" id="recurringOptions">
+                <label class="form-label">Repeat Every</label>
+                <select class="form-select" id="recurringFrequency">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+            </div>
+            
+            <button class="submit-btn" onclick="saveTransaction()">Save Record</button>
+        </div>
+    </div>
+    
+    <!-- Edit Transaction Modal -->
+    <div class="modal" id="editTransactionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Edit Transaction</span>
+                <button class="close-btn" onclick="closeEditModal()">×</button>
+            </div>
+            
+            <input type="hidden" id="editTransactionId">
+            
+            <div class="form-group">
+                <label class="form-label">What?</label>
+                <input type="text" class="form-input" id="editItemName">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Amount (₦)</label>
+                <input type="number" class="form-input" id="editItemAmount">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="editItemCategory">
+                    <option value="general">General</option>
+                    <option value="food">Food & Groceries</option>
+                    <option value="transport">Transport</option>
+                    <option value="shopping">Shopping</option>
+                    <option value="bills">Bills & Utilities</option>
+                    <option value="salary">Salary</option>
+                    <option value="business">Business</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <button class="submit-btn" onclick="updateTransaction()">Update Record</button>
+            <button class="danger-btn" onclick="deleteCurrentTransaction()">Delete Record</button>
+        </div>
+    </div>
+    
+    <!-- Voice Modal -->
+    <div class="modal" id="voiceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">🎤 Voice Entry</span>
+                <button class="close-btn" onclick="closeVoiceModal()">×</button>
+            </div>
+            
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">Say something like:<br><em>"Sold 5 bags of rice for twenty five thousand"</em></p>
+            
+            <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
+                <span>🎤</span>
+                <span id="voiceBtnText">Tap to Speak</span>
+            </button>
+            
+            <div id="voiceResult" style="margin-top: 20px; padding: 16px; background: var(--bg-primary); border-radius: 12px; display: none;">
+                <strong>Heard:</strong> <span id="heardText"></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Debt Modal -->
+    <div class="modal" id="debtModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Add Debt Record</span>
+                <button class="close-btn" onclick="closeDebtModal()">×</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Person Name</label>
+                <input type="text" class="form-input" id="newDebtorName" placeholder="Enter name">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Amount (₦)</label>
+                <input type="number" class="form-input" id="newDebtAmount" placeholder="0">
+            </div>
+            
+            <button class="submit-btn" onclick="saveDebt()">Save Debt</button>
+        </div>
+    </div>
+    
+    <!-- Pay Debt Modal -->
+    <div class="modal" id="payDebtModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Record Payment</span>
+                <button class="close-btn" onclick="closePayDebtModal()">×</button>
+            </div>
+            
+            <input type="hidden" id="payDebtId">
+            
+            <div class="form-group">
+                <label class="form-label">Debtor</label>
+                <input type="text" class="form-input" id="payDebtorName" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Total Amount Owed</label>
+                <input type="text" class="form-input" id="payTotalAmount" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Payment Amount (₦)</label>
+                <input type="number" class="form-input" id="payAmount" placeholder="0">
+            </div>
+            
+            <button class="submit-btn" onclick="recordPayment()">Record Payment</button>
+            <button class="secondary-btn" onclick="markDebtFullyPaid()">Mark Fully Paid</button>
+        </div>
+    </div>
+    
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Export Data</span>
+                <button class="close-btn" onclick="closeExportModal()">×</button>
+            </div>
+            
+            <div class="export-grid">
+                <div class="export-btn" onclick="exportData('json')">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                    <div style="font-weight: 600;">JSON</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Full Backup</div>
+                </div>
+                <div class="export-btn" onclick="exportData('csv')">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+                    <div style="font-weight: 600;">CSV</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Spreadsheet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import Modal -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Import Data</span>
+                <button class="close-btn" onclick="closeImportModal()">×</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Select File (JSON or CSV)</label>
+                <input type="file" class="form-input" id="importFile" accept=".json,.csv" onchange="handleFileImport(event)">
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="mergeData">
+                <label for="mergeData">Merge with existing data (uncheck to replace)</label>
+            </div>
+            
+            <button class="submit-btn" onclick="importData()">Import Data</button>
+        </div>
+    </div>
+    
+    <!-- Recurring Transactions Modal -->
+    <div class="modal" id="recurringModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Recurring Transactions</span>
+                <button class="close-btn" onclick="closeRecurringModal()">×</button>
+            </div>
+            
+            <div id="recurringList">
+                <div class="empty-state">No recurring transactions set up</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Management Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Manage Profiles</span>
+                <button class="close-btn" onclick="closeProfileModal()">×</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">New Profile Name</label>
+                <input type="text" class="form-input" id="newProfileName" placeholder="e.g., Personal Business">
+            </div>
+            
+            <button class="submit-btn" onclick="createProfile()">Create Profile</button>
+            
+            <div class="section-header" style="margin-top: 24px;">
+                <span>Existing Profiles</span>
+            </div>
+            
+            <div id="profileList"></div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Quick Settings</span>
+                <button class="close-btn" onclick="closeSettingsModal()">×</button>
+            </div>
+            
+            <div class="settings-section">
+                <div class="settings-title">Quick Actions</div>
+                <div class="settings-item" onclick="openExportModal(); closeSettingsModal();" style="cursor: pointer;">
+                    <div class="settings-label">
+                        <span class="settings-icon">💾</span>
+                        <span>Export Data</span>
+                    </div>
+                    <span>→</span>
+                </div>
+                <div class="settings-item" onclick="openImportModal(); closeSettingsModal();" style="cursor: pointer;">
+                    <div class="settings-label">
+                        <span class="settings-icon">📥</span>
+                        <span>Import Data</span>
+                    </div>
+                    <span>→</span>
+                </div>
+                <div class="settings-item" onclick="openRecurringModal(); closeSettingsModal();" style="cursor: pointer;">
+                    <div class="settings-label">
+                        <span class="settings-icon">🔄</span>
+                        <span>Recurring Transactions</span>
+                    </div>
+                    <span>→</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <div class="settings-title">Appearance</div>
+                <div class="settings-item">
+                    <div class="settings-label">
+                        <span class="settings-icon">🌙</span>
+                        <span>Dark Mode</span>
+                    </div>
+                    <div class="toggle-switch" id="quickDarkModeToggle" onclick="toggleTheme()"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ==========================================
+        // FIREBASE CONFIG - REPLACE WITH YOUR KEYS
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Initialize Firebase
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            document.getElementById('syncStatus').textContent = 'Cloud sync active';
+        } catch (e) {
+            console.log('Firebase not configured - using local storage only');
+        }
+        
+        // Data storage
+        let transactions = [];
+        let debts = [];
+        let recurringTransactions = [];
+        let profiles = [];
+        let currentProfile = 'default';
+        let currentType = 'sell';
+        let recognition;
+        let mainChart = null;
+        let currentChartType = 'weekly';
+        let editingTransactionId = null;
+        let editingDebtId = null;
+        
+        // Categories
+        const categories = {
+            general: { label: 'General', class: 'cat-general' },
+            food: { label: 'Food & Groceries', class: 'cat-food' },
+            transport: { label: 'Transport', class: 'cat-transport' },
+            shopping: { label: 'Shopping', class: 'cat-shopping' },
+            bills: { label: 'Bills & Utilities', class: 'cat-bills' },
+            salary: { label: 'Salary', class: 'cat-salary' },
+            business: { label: 'Business', class: 'cat-business' },
+            other: { label: 'Other', class: 'cat-other' }
+        };
+        
+        // Initialize speech recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-NG';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('heardText').textContent = transcript;
+                document.getElementById('voiceResult').style.display = 'block';
+                parseVoiceInput(transcript);
+            };
+            
+            recognition.onerror = function(event) {
+                showToast('Could not hear clearly. Please try again.');
+                stopVoice();
+            };
+            
+            recognition.onend = function() {
+                stopVoice();
+            };
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            loadSettings();
+            loadProfiles();
+            loadData();
+            checkRecurringTransactions();
+            updateDashboard();
+            renderTransactions();
+            renderDebts();
+            renderProfileSelector();
+            applyTheme();
+            requestNotificationPermission();
+        }
+        
+        // ==========================================
+        // PROFILE MANAGEMENT
+        // ==========================================
+        function loadProfiles() {
+            profiles = JSON.parse(localStorage.getItem('profiles')) || [{ id: 'default', name: 'Default' }];
+            currentProfile = localStorage.getItem('currentProfile') || 'default';
+            updateProfileDisplay();
+        }
+        
+        function saveProfiles() {
+            localStorage.setItem('profiles', JSON.stringify(profiles));
+            localStorage.setItem('currentProfile', currentProfile);
+        }
+        
+        function loadData() {
+            const prefix = currentProfile + '_';
+            transactions = JSON.parse(localStorage.getItem(prefix + 'transactions')) || [];
+            debts = JSON.parse(localStorage.getItem(prefix + 'debts')) || [];
+            recurringTransactions = JSON.parse(localStorage.getItem(prefix + 'recurring')) || [];
+        }
+        
+        function saveData() {
+            const prefix = currentProfile + '_';
+            localStorage.setItem(prefix + 'transactions', JSON.stringify(transactions));
+            localStorage.setItem(prefix + 'debts', JSON.stringify(debts));
+            localStorage.setItem(prefix + 'recurring', JSON.stringify(recurringTransactions));
+            
+            if (db) {
+                const userId = localStorage.getItem('userId') || 'user_' + Date.now();
+                localStorage.setItem('userId', userId);
+                db.ref('users/' + userId + '/' + currentProfile).set({
+                    transactions: transactions,
+                    debts: debts,
+                    recurring: recurringTransactions,
+                    lastSync: new Date().toISOString()
+                });
+            }
+        }
+        
+        function switchProfile(profileId) {
+            currentProfile = profileId;
+            saveProfiles();
+            loadData();
+            updateDashboard();
+            renderTransactions();
+            renderDebts();
+            renderProfileSelector();
+            showToast('Switched to ' + getProfileName(profileId));
+        }
+        
+        function getProfileName(profileId) {
+            const profile = profiles.find(p => p.id === profileId);
+            return profile ? profile.name : 'Default';
+        }
+        
+        function updateProfileDisplay() {
+            const el = document.getElementById('currentProfile');
+            if (el) el.textContent = profiles.length > 1 ? getProfileName(currentProfile) : '';
+        }
+        
+        function renderProfileSelector() {
+            const container = document.getElementById('profileSelector');
+            if (profiles.length <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = profiles.map(p => `
+                <div class="profile-chip ${p.id === currentProfile ? 'active' : ''}" onclick="switchProfile('${p.id}')">
+                    👤 ${p.name}
+                </div>
+            `).join('');
+        }
+        
+        function createProfile() {
+            const name = document.getElementById('newProfileName').value.trim();
+            if (!name) {
+                showToast('Please enter a profile name');
+                return;
+            }
+            
+            const id = 'profile_' + Date.now();
+            profiles.push({ id, name });
+            saveProfiles();
+            renderProfileSelector();
+            renderProfileList();
+            document.getElementById('newProfileName').value = '';
+            showToast('Profile created successfully');
+        }
+        
+        function deleteProfile(profileId) {
+            if (profiles.length <= 1) {
+                showToast('Cannot delete the only profile');
+                return;
+            }
+            
+            if (!confirm('Delete this profile and all its data?')) return;
+            
+            profiles = profiles.filter(p => p.id !== profileId);
+            localStorage.removeItem(profileId + '_transactions');
+            localStorage.removeItem(profileId + '_debts');
+            localStorage.removeItem(profileId + '_recurring');
+            
+            if (currentProfile === profileId) {
+                currentProfile = profiles[0].id;
+            }
+            
+            saveProfiles();
+            loadData();
+            renderProfileSelector();
+            renderProfileList();
+            updateDashboard();
+            renderTransactions();
+            renderDebts();
+            showToast('Profile deleted');
+        }
+        
+        function renderProfileList() {
+            const container = document.getElementById('profileList');
+            container.innerHTML = profiles.map(p => `
+                <div class="settings-item">
+                    <div class="settings-label">
+                        <span class="settings-icon">👤</span>
+                        <span>${p.name} ${p.id === currentProfile ? '(Active)' : ''}</span>
+                    </div>
+                    ${profiles.length > 1 ? `<span class="delete-profile" onclick="deleteProfile('${p.id}')">🗑️</span>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        // ==========================================
+        // NAVIGATION
+        // ==========================================
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            event.currentTarget.classList.add('active');
+            
+            if (page === 'home') {
+                document.getElementById('homePage').classList.add('active');
+                updateDashboard();
+                renderTransactions();
+            } else if (page === 'history') {
+                document.getElementById('historyPage').classList.add('active');
+                renderHistory('all');
+            } else if (page === 'reports') {
+                document.getElementById('reportsPage').classList.add('active');
+                updateReports();
+            } else if (page === 'settings') {
+                document.getElementById('settingsPage').classList.add('active');
+            }
+        }
+        
+        // ==========================================
+        // MODAL FUNCTIONS
+        // ==========================================
+        function openModal(type) {
+            currentType = type;
+            editingTransactionId = null;
+            document.getElementById('transactionModal').classList.add('active');
+            document.getElementById('modalTitle').textContent = type === 'sell' ? 'New Sale' : 'New Purchase';
+            clearForm();
+        }
+        
+        function closeModal() {
+            document.getElementById('transactionModal').classList.remove('active');
+            clearForm();
+        }
+        
+        function openEditModal(transactionId) {
+            const transaction = transactions.find(t => t.id === transactionId);
+            if (!transaction) return;
+            
+            editingTransactionId = transactionId;
+            document.getElementById('editTransactionId').value = transactionId;
+            document.getElementById('editItemName').value = transaction.name;
+            document.getElementById('editItemAmount').value = transaction.amount;
+            document.getElementById('editItemCategory').value = transaction.category || 'general';
+            document.getElementById('editTransactionModal').classList.add('active');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editTransactionModal').classList.remove('active');
+            editingTransactionId = null;
+        }
+        
+        function openVoiceModal() {
+            if (!recognition) {
+                showToast('Voice input not supported on this device');
+                return;
+            }
+            document.getElementById('voiceModal').classList.add('active');
+        }
+        
+        function closeVoiceModal() {
+            document.getElementById('voiceModal').classList.remove('active');
+            stopVoice();
+            document.getElementById('voiceResult').style.display = 'none';
+        }
+        
+        function openDebtModal() {
+            document.getElementById('debtModal').classList.add('active');
+        }
+        
+        function closeDebtModal() {
+            document.getElementById('debtModal').classList.remove('active');
+            document.getElementById('newDebtorName').value = '';
+            document.getElementById('newDebtAmount').value = '';
+        }
+        
+        function openPayDebtModal(debtId) {
+            const debt = debts.find(d => d.id === debtId);
+            if (!debt) return;
+            
+            editingDebtId = debtId;
+            document.getElementById('payDebtId').value = debtId;
+            document.getElementById('payDebtorName').value = debt.name;
+            document.getElementById('payTotalAmount').value = '₦' + debt.amount.toLocaleString();
+            document.getElementById('payAmount').value = '';
+            document.getElementById('payDebtModal').classList.add('active');
+        }
+        
+        function closePayDebtModal() {
+            document.getElementById('payDebtModal').classList.remove('active');
+            editingDebtId = null;
+        }
+        
+        function openExportModal() {
+            document.getElementById('exportModal').classList.add('active');
+        }
+        
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
+        
+        function openImportModal() {
+            document.getElementById('importModal').classList.add('active');
+        }
+        
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('active');
+            document.getElementById('importFile').value = '';
+        }
+        
+        function openRecurringModal() {
+            renderRecurringList();
+            document.getElementById('recurringModal').classList.add('active');
+        }
+        
+        function closeRecurringModal() {
+            document.getElementById('recurringModal').classList.remove('active');
+        }
+        
+        function openProfileModal() {
+            renderProfileList();
+            document.getElementById('profileModal').classList.add('active');
+        }
+        
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+        
+        function openSettingsModal() {
+            updateQuickSettings();
+            document.getElementById('settingsModal').classList.add('active');
+        }
+        
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+        
+        // ==========================================
+        // VOICE FUNCTIONS
+        // ==========================================
+        function toggleVoice() {
+            if (document.getElementById('voiceBtn').classList.contains('listening')) {
+                stopVoice();
+            } else {
+                startVoice();
+            }
+        }
+        
+        function startVoice() {
+            recognition.start();
+            document.getElementById('voiceBtn').classList.add('listening');
+            document.getElementById('voiceBtnText').textContent = 'Listening...';
+        }
+        
+        function stopVoice() {
+            if (recognition) recognition.stop();
+            document.getElementById('voiceBtn').classList.remove('listening');
+            document.getElementById('voiceBtnText').textContent = 'Tap to Speak';
+        }
+        
+        function parseVoiceInput(text) {
+            const lower = text.toLowerCase();
+            const isSell = lower.includes('sold') || lower.includes('sell') || lower.includes('sale');
+            const isBuy = lower.includes('bought') || lower.includes('buy') || lower.includes('purchase');
+            
+            const numbers = text.match(/\d+/g);
+            let amount = 0;
+            let quantity = 1;
+            
+            if (numbers) {
+                if (numbers.length >= 2) {
+                    quantity = parseInt(numbers[0]);
+                    amount = parseInt(numbers[numbers.length - 1]);
+                } else {
+                    amount = parseInt(numbers[0]);
+                }
+            }
+            
+            const words = lower.replace(/\d+/g, '').split(' ').filter(w => w.length > 2 && !['sold','sell','sale','bought','buy','purchase','for','the','and'].includes(w));
+            const itemName = words.slice(0, 3).join(' ') || 'Unnamed item';
+            
+            if (amount > 0) {
+                setTimeout(() => {
+                    if (confirm(`Save: ${isSell ? 'Sold' : 'Bought'} ${quantity} ${itemName} for ₦${amount}?`)) {
+                        saveVoiceTransaction(isSell ? 'sell' : 'buy', itemName, amount);
+                    }
+                }, 500);
+            }
+        }
+        
+        function saveVoiceTransaction(type, name, amount) {
+            const transaction = {
+                id: Date.now(),
+                name: name,
+                amount: amount,
+                type: type,
+                category: 'general',
+                isDebt: false,
+                date: new Date().toISOString()
+            };
+            
+            transactions.unshift(transaction);
+            saveData();
+            closeVoiceModal();
+            updateDashboard();
+            renderTransactions();
+            showToast('Transaction saved!');
+        }
+        
+        // ==========================================
+        // TRANSACTION FUNCTIONS
+        // ==========================================
+        function toggleDebtName() {
+            const isChecked = document.getElementById('isDebt').checked;
+            document.getElementById('debtNameGroup').classList.toggle('hidden', !isChecked);
+        }
+        
+        function toggleRecurringOptions() {
+            const isChecked = document.getElementById('isRecurring').checked;
+            document.getElementById('recurringOptions').classList.toggle('hidden', !isChecked);
+        }
+        
+        function saveTransaction() {
+            const name = document.getElementById('itemName').value.trim();
+            const amount = parseFloat(document.getElementById('itemAmount').value);
+            const category = document.getElementById('itemCategory').value;
+            const isDebt = document.getElementById('isDebt').checked;
+            const debtorName = document.getElementById('debtorName').value.trim();
+            const isRecurring = document.getElementById('isRecurring').checked;
+            const frequency = document.getElementById('recurringFrequency').value;
+            
+            if (!name || !amount || amount <= 0) {
+                showToast('Please enter item name and valid amount');
+                return;
+            }
+            
+            const transaction = {
+                id: Date.now(),
+                name: name,
+                amount: amount,
+                type: currentType,
+                category: category,
+                isDebt: isDebt,
+                debtorName: isDebt ? debtorName : null,
+                date: new Date().toISOString()
+            };
+            
+            transactions.unshift(transaction);
+            
+            if (isRecurring) {
+                const recurring = {
+                    id: 'rec_' + Date.now(),
+                    name: name,
+                    amount: amount,
+                    type: currentType,
+                    category: category,
+                    frequency: frequency,
+                    lastProcessed: new Date().toISOString()
+                };
+                recurringTransactions.push(recurring);
+            }
+            
+            saveData();
+            
+            if (isDebt && debtorName && currentType === 'sell') {
+                addDebt(debtorName, amount);
+            }
+            
+            closeModal();
+            updateDashboard();
+            renderTransactions();
+            showToast('Transaction saved!');
+        }
+        
+        function updateTransaction() {
+            if (!editingTransactionId) return;
+            
+            const transaction = transactions.find(t => t.id === editingTransactionId);
+            if (!transaction) return;
+            
+            transaction.name = document.getElementById('editItemName').value.trim();
+            transaction.amount = parseFloat(document.getElementById('editItemAmount').value);
+            transaction.category = document.getElementById('editItemCategory').value;
+            
+            saveData();
+            closeEditModal();
+            updateDashboard();
+            renderTransactions();
+            renderHistory('all');
+            showToast('Transaction updated!');
+        }
+        
+        function deleteCurrentTransaction() {
+            if (!editingTransactionId) return;
+            
+            if (!confirm('Delete this transaction?')) return;
+            
+            transactions = transactions.filter(t => t.id !== editingTransactionId);
+            saveData();
+            closeEditModal();
+            updateDashboard();
+            renderTransactions();
+            renderHistory('all');
+            showToast('Transaction deleted!');
+        }
+        
+        function deleteTransaction(transactionId) {
+            if (!confirm('Delete this transaction?')) return;
+            
+            transactions = transactions.filter(t => t.id !== transactionId);
+            saveData();
+            updateDashboard();
+            renderTransactions();
+            renderHistory('all');
+            showToast('Transaction deleted!');
+        }
+        
+        // ==========================================
+        // DEBT FUNCTIONS
+        // ==========================================
+        function addDebt(name, amount) {
+            const existing = debts.find(d => d.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+                existing.amount += amount;
+                existing.history = existing.history || [];
+                existing.history.push({ amount: amount, date: new Date().toISOString(), type: 'added' });
+            } else {
+                debts.push({
+                    id: Date.now(),
+                    name: name,
+                    amount: amount,
+                    originalAmount: amount,
+                    history: [{ amount: amount, date: new Date().toISOString(), type: 'added' }],
+                    date: new Date().toISOString()
+                });
+            }
+            saveData();
+            renderDebts();
+        }
+        
+        function saveDebt() {
+            const name = document.getElementById('newDebtorName').value.trim();
+            const amount = parseFloat(document.getElementById('newDebtAmount').value);
+            
+            if (!name || !amount || amount <= 0) {
+                showToast('Please enter name and valid amount');
+                return;
+            }
+            
+            addDebt(name, amount);
+            closeDebtModal();
+            updateDashboard();
+            showToast('Debt recorded!');
+        }
+        
+        function recordPayment() {
+            if (!editingDebtId) return;
+            
+            const debt = debts.find(d => d.id === editingDebtId);
+            if (!debt) return;
+            
+            const paymentAmount = parseFloat(document.getElementById('payAmount').value);
+            if (!paymentAmount || paymentAmount <= 0) {
+                showToast('Please enter a valid payment amount');
+                return;
+            }
+            
+            debt.amount -= paymentAmount;
+            debt.history = debt.history || [];
+            debt.history.push({ amount: paymentAmount, date: new Date().toISOString(), type: 'payment' });
+            
+            if (debt.amount <= 0) {
+                debts = debts.filter(d => d.id !== editingDebtId);
+                showToast('Debt fully paid!');
+            } else {
+                showToast('Payment recorded!');
+            }
+            
+            saveData();
+            closePayDebtModal();
+            updateDashboard();
+            renderDebts();
+        }
+        
+        function markDebtFullyPaid() {
+            if (!editingDebtId) return;
+            if (!confirm('Mark this debt as fully paid?')) return;
+            
+            debts = debts.filter(d => d.id !== editingDebtId);
+            saveData();
+            closePayDebtModal();
+            updateDashboard();
+            renderDebts();
+            showToast('Debt marked as paid!');
+        }
+        
+        function deleteDebt(debtId) {
+            if (!confirm('Delete this debt record?')) return;
+            
+            debts = debts.filter(d => d.id !== debtId);
+            saveData();
+            updateDashboard();
+            renderDebts();
+            showToast('Debt deleted!');
+        }
+        
+        // ==========================================
+        // RECURRING TRANSACTIONS
+        // ==========================================
+        function checkRecurringTransactions() {
+            const now = new Date();
+            let updated = false;
+            
+            recurringTransactions.forEach(rec => {
+                const lastDate = new Date(rec.lastProcessed);
+                let shouldProcess = false;
+                
+                if (rec.frequency === 'daily') {
+                    shouldProcess = (now - lastDate) >= 24 * 60 * 60 * 1000;
+                } else if (rec.frequency === 'weekly') {
+                    shouldProcess = (now - lastDate) >= 7 * 24 * 60 * 60 * 1000;
+                } else if (rec.frequency === 'monthly') {
+                    shouldProcess = now.getMonth() !== lastDate.getMonth() || now.getFullYear() !== lastDate.getFullYear();
+                }
+                
+                if (shouldProcess) {
+                    const transaction = {
+                        id: Date.now(),
+                        name: rec.name + ' (Recurring)',
+                        amount: rec.amount,
+                        type: rec.type,
+                        category: rec.category,
+                        isDebt: false,
+                        date: new Date().toISOString()
+                    };
+                    transactions.unshift(transaction);
+                    rec.lastProcessed = new Date().toISOString();
+                    updated = true;
+                }
+            });
+            
+            if (updated) {
+                saveData();
+                updateDashboard();
+                renderTransactions();
+                showToast('Recurring transactions processed!');
+            }
+        }
+        
+        function renderRecurringList() {
+            const container = document.getElementById('recurringList');
+            if (recurringTransactions.length === 0) {
+                container.innerHTML = '<div class="empty-state">No recurring transactions set up</div>';
+                return;
+            }
+            
+            container.innerHTML = recurringTransactions.map(r => `
+                <div class="transaction-item">
+                    <div class="item-info">
+                        <h3>${r.name} <span class="recurring-badge">🔄 ${r.frequency}</span></h3>
+                        <div class="item-meta">${r.type === 'sell' ? 'Income' : 'Expense'} • ${categories[r.category]?.label || 'General'}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="item-amount ${r.type === 'sell' ? 'income' : 'expense'}">₦${r.amount.toLocaleString()}</div>
+                        <button class="item-btn delete" onclick="deleteRecurring('${r.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function deleteRecurring(recId) {
+            if (!confirm('Delete this recurring transaction?')) return;
+            
+            recurringTransactions = recurringTransactions.filter(r => r.id !== recId);
+            saveData();
+            renderRecurringList();
+            showToast('Recurring transaction deleted!');
+        }
+        
+        // ==========================================
+        // DASHBOARD & RENDERING
+        // ==========================================
+        function updateDashboard() {
+            const today = new Date().toDateString();
+            const todayTrans = transactions.filter(t => new Date(t.date).toDateString() === today);
+            
+            let profit = 0;
+            todayTrans.forEach(t => {
+                if (t.type === 'sell') profit += t.amount;
+                else profit -= t.amount;
+            });
+            
+            const totalOwed = debts.reduce((sum, d) => sum + d.amount, 0);
+            
+            const profitEl = document.getElementById('todayProfit');
+            profitEl.textContent = '₦' + profit.toLocaleString();
+            profitEl.className = 'balance-amount ' + (profit >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('totalDebt').textContent = '₦' + totalOwed.toLocaleString();
+        }
+        
+        function renderTransactions() {
+            const list = document.getElementById('transactionList');
+            const today = new Date().toDateString();
+            const todayTrans = transactions.filter(t => new Date(t.date).toDateString() === today);
+            
+            if (todayTrans.length === 0) {
+                list.innerHTML = '<div class="empty-state">No transactions today</div>';
+                return;
+            }
+            
+            list.innerHTML = todayTrans.map(t => `
+                <div class="transaction-item">
+                    <div class="item-info">
+                        <h3>
+                            ${t.name} 
+                            ${t.isDebt ? '<span style="color:var(--danger-color);font-size:12px">(CREDIT)</span>' : ''}
+                            ${t.category && t.category !== 'general' ? `<span class="category-tag ${categories[t.category]?.class || ''}">${categories[t.category]?.label || t.category}</span>` : ''}
+                        </h3>
+                        <div class="item-meta">${new Date(t.date).toLocaleTimeString()}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="item-amount ${t.type === 'sell' ? 'income' : 'expense'}">
+                            ${t.type === 'sell' ? '+' : '-'}₦${t.amount.toLocaleString()}
+                        </div>
+                        <div class="item-actions">
+                            <button class="item-btn edit" onclick="openEditModal(${t.id})">✏️</button>
+                            <button class="item-btn delete" onclick="deleteTransaction(${t.id})">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderDebts() {
+            const container = document.getElementById('debtList');
+            if (debts.length === 0) {
+                container.innerHTML = '<div class="empty-state">No debts recorded</div>';
+                return;
+            }
+            
+            container.innerHTML = debts.map(d => {
+                const progress = d.originalAmount ? ((d.originalAmount - d.amount) / d.originalAmount * 100) : 0;
+                return `
+                <div class="debt-item">
+                    <div class="item-info" style="flex: 1;">
+                        <h3>${d.name}</h3>
+                        <div class="item-meta">${new Date(d.date).toLocaleDateString()}</div>
+                        ${d.originalAmount ? `
+                        <div class="payment-progress">
+                            <div class="payment-progress-bar" style="width: ${progress}%"></div>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                            ${progress.toFixed(0)}% paid (₦${(d.originalAmount - d.amount).toLocaleString()} of ₦${d.originalAmount.toLocaleString()})
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="item-amount expense">₦${d.amount.toLocaleString()}</div>
+                        <div class="item-actions">
+                            <button class="item-btn pay" onclick="openPayDebtModal(${d.id})" title="Record Payment">💵</button>
+                            <button class="item-btn delete" onclick="deleteDebt(${d.id})">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+        
+        // ==========================================
+        // HISTORY & SEARCH
+        // ==========================================
+        function searchTransactions() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            renderHistory('all', query);
+        }
+        
+        function filterHistory(filter) {
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            renderHistory(filter, query);
+        }
+        
+        function renderHistory(filter, searchQuery = '') {
+            const container = document.getElementById('historyList');
+            let filtered = transactions;
+            
+            if (filter === 'sell') filtered = transactions.filter(t => t.type === 'sell');
+            else if (filter === 'buy') filtered = transactions.filter(t => t.type === 'buy');
+            else if (filter === 'debt') filtered = transactions.filter(t => t.isDebt);
+            
+            if (searchQuery) {
+                filtered = filtered.filter(t => 
+                    t.name.toLowerCase().includes(searchQuery) || 
+                    t.amount.toString().includes(searchQuery)
+                );
+            }
+            
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state">No transactions found</div>';
+                return;
+            }
+            
+            const grouped = {};
+            filtered.forEach(t => {
+                const date = new Date(t.date).toDateString();
+                if (!grouped[date]) grouped[date] = [];
+                grouped[date].push(t);
+            });
+            
+            let html = '';
+            Object.keys(grouped).sort((a,b) => new Date(b) - new Date(a)).forEach(date => {
+                html += `<div class="date-header">${date}</div>`;
+                html += grouped[date].map(t => `
+                    <div class="transaction-item">
+                        <div class="item-info">
+                            <h3>
+                                ${t.name} 
+                                ${t.isDebt ? '<span style="color:var(--danger-color);font-size:12px">(CREDIT)</span>' : ''}
+                                ${t.category && t.category !== 'general' ? `<span class="category-tag ${categories[t.category]?.class || ''}">${categories[t.category]?.label || t.category}</span>` : ''}
+                            </h3>
+                            <div class="item-meta">${new Date(t.date).toLocaleTimeString()}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="item-amount ${t.type === 'sell' ? 'income' : 'expense'}">
+                                ${t.type === 'sell' ? '+' : '-'}₦${t.amount.toLocaleString()}
+                            </div>
+                            <div class="item-actions">
+                                <button class="item-btn edit" onclick="openEditModal(${t.id})">✏️</button>
+                                <button class="item-btn delete" onclick="deleteTransaction(${t.id})">🗑️</button>
+                        </div>
+                        </div>
+                    </div>
+                `).join('');
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // ==========================================
+        // REPORTS & CHARTS
+        // ==========================================
+        function updateReports() {
+            const period = document.getElementById('reportPeriod').value;
+            const now = new Date();
+            let startDate;
+            
+            if (period === 'week') {
+                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            } else if (period === 'month') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            } else {
+                startDate = new Date(now.getFullYear(), 0, 1);
+            }
+            
+            const filtered = transactions.filter(t => new Date(t.date) >= startDate);
+            
+            const sales = filtered.filter(t => t.type === 'sell').reduce((sum, t) => sum + t.amount, 0);
+            const expenses = filtered.filter(t => t.type === 'buy').reduce((sum, t) => sum + t.amount, 0);
+            const profit = sales - expenses;
+            const totalDebts = debts.reduce((sum, d) => sum + d.amount, 0);
+            
+            document.getElementById('reportSales').textContent = '₦' + sales.toLocaleString();
+            document.getElementById('reportExpenses').textContent = '₦' + expenses.toLocaleString();
+            document.getElementById('reportProfit').textContent = '₦' + profit.toLocaleString();
+            document.getElementById('reportProfit').className = 'report-value ' + (profit >= 0 ? 'positive' : 'negative');
+            document.getElementById('reportDebts').textContent = '₦' + totalDebts.toLocaleString();
+            
+            drawChart(filtered);
+        }
+        
+        function switchChart(type) {
+            currentChartType = type;
+            document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            updateReports();
+        }
+        
+        function drawChart(data) {
+            const canvas = document.getElementById('mainChart');
+            const ctx = canvas.getContext('2d');
+            
+            if (mainChart) {
+                mainChart.destroy();
+            }
+            
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight - 40;
+            
+            if (currentChartType === 'weekly') {
+                drawWeeklyChart(ctx, canvas, data);
+            } else if (currentChartType === 'monthly') {
+                drawMonthlyChart(ctx, canvas, data);
+            } else {
+                drawCategoryChart(ctx, canvas, data);
+            }
+        }
+        
+        function drawWeeklyChart(ctx, canvas, data) {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const salesData = {};
+            const expenseData = {};
+            days.forEach(d => { salesData[d] = 0; expenseData[d] = 0; });
+            
+            data.forEach(t => {
+                const day = days[new Date(t.date).getDay()];
+                if (t.type === 'sell') salesData[day] += t.amount;
+                else expenseData[day] += t.amount;
+            });
+            
+            const max = Math.max(...Object.values(salesData), ...Object.values(expenseData)) || 1;
+            const barWidth = canvas.width / 7 - 16;
+            const scale = (canvas.height - 40) / max;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            Object.keys(salesData).forEach((day, i) => {
+                const x = i * (barWidth + 16) + 8;
+                const salesHeight = salesData[day] * scale;
+                const expenseHeight = expenseData[day] * scale;
+                
+                // Sales bar
+                ctx.fillStyle = '#059669';
+                ctx.fillRect(x, canvas.height - salesHeight - 20, barWidth / 2 - 2, salesHeight);
+                
+                // Expense bar
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(x + barWidth / 2 + 2, canvas.height - expenseHeight - 20, barWidth / 2 - 2, expenseHeight);
+                
+                // Day label
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(day, x + barWidth / 2, canvas.height - 5);
+            });
+            
+            // Legend
+            ctx.fillStyle = '#059669';
+            ctx.fillRect(10, 5, 12, 12);
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
+            ctx.textAlign = 'left';
+            ctx.fillText('Sales', 28, 15);
+            
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(80, 5, 12, 12);
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
+            ctx.fillText('Expenses', 98, 15);
+        }
+        
+        function drawMonthlyChart(ctx, canvas, data) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const salesData = {};
+            const expenseData = {};
+            months.forEach(m => { salesData[m] = 0; expenseData[m] = 0; });
+            
+            data.forEach(t => {
+                const month = months[new Date(t.date).getMonth()];
+                if (t.type === 'sell') salesData[month] += t.amount;
+                else expenseData[month] += t.amount;
+            });
+            
+            const max = Math.max(...Object.values(salesData), ...Object.values(expenseData)) || 1;
+            const barWidth = canvas.width / 12 - 8;
+            const scale = (canvas.height - 40) / max;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            Object.keys(salesData).forEach((month, i) => {
+                const x = i * (barWidth + 8) + 4;
+                const salesHeight = salesData[month] * scale;
+                const expenseHeight = expenseData[month] * scale;
+                
+                ctx.fillStyle = '#059669';
+                ctx.fillRect(x, canvas.height - salesHeight - 20, barWidth / 2 - 1, salesHeight);
+                
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(x + barWidth / 2 + 1, canvas.height - expenseHeight - 20, barWidth / 2 - 1, expenseHeight);
+                
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(month, x + barWidth / 2, canvas.height - 5);
+            });
+            
+            // Legend
+            ctx.fillStyle = '#059669';
+            ctx.fillRect(10, 5, 12, 12);
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
+            ctx.textAlign = 'left';
+            ctx.fillText('Sales', 28, 15);
+            
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(80, 5, 12, 12);
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
+            ctx.fillText('Expenses', 98, 15);
+        }
+        
+        function drawCategoryChart(ctx, canvas, data) {
+            const catData = {};
+            Object.keys(categories).forEach(c => catData[c] = 0);
+            
+            data.filter(t => t.type === 'buy').forEach(t => {
+                const cat = t.category || 'general';
+                catData[cat] += t.amount;
+            });
+            
+            const total = Object.values(catData).reduce((a, b) => a + b, 0) || 1;
+            const colors = ['#6b7280', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#10b981', '#059669', '#9ca3af'];
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let currentAngle = 0;
+            const centerX = canvas.width / 3;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 20;
+            
+            Object.keys(catData).forEach((cat, i) => {
+                const value = catData[cat];
+                if (value === 0) return;
+                
+                const angle = (value / total) * 2 * Math.PI;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + angle);
+                ctx.closePath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                
+                currentAngle += angle;
+            });
+            
+            // Legend
+            let legendY = 20;
+            Object.keys(catData).forEach((cat, i) => {
+                const value = catData[cat];
+                if (value === 0) return;
+                
+                const x = canvas.width * 0.6;
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fillRect(x, legendY - 8, 12, 12);
+                
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary');
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(categories[cat]?.label || cat, x + 18, legendY);
+                
+                legendY += 20;
+            });
+        }
+        
+        // ==========================================
+        // EXPORT/IMPORT
+        // ==========================================
+        function exportData(format) {
+            const data = {
+                transactions: transactions,
+                debts: debts,
+                recurring: recurringTransactions,
+                profiles: profiles,
+                currentProfile: currentProfile,
+                exportDate: new Date().toISOString()
+            };
+            
+            if (format === 'json') {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mybook_backup_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Data exported as JSON!');
+            } else if (format === 'csv') {
+                let csv = 'Date,Type,Category,Item,Amount,Is Debt,Debtor Name\n';
+                transactions.forEach(t => {
+                    csv += `${t.date},${t.type},${t.category || 'general'},"${t.name}",${t.amount},${t.isDebt || false},"${t.debtorName || ''}"\n`;
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mybook_transactions_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Data exported as CSV!');
+            }
+            
+            closeExportModal();
+        }
+        
+        function handleFileImport(event) {
+            // File is selected, will be processed on import button click
+        }
+        
+        function importData() {
+            const fileInput = document.getElementById('importFile');
+            const merge = document.getElementById('mergeData').checked;
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showToast('Please select a file');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    
+                    if (file.name.endsWith('.json')) {
+                        const data = JSON.parse(content);
+                        
+                        if (merge) {
+                            transactions = [...transactions, ...(data.transactions || [])];
+                            debts = [...debts, ...(data.debts || [])];
+                            recurringTransactions = [...recurringTransactions, ...(data.recurring || [])];
+                        } else {
+                            transactions = data.transactions || [];
+                            debts = data.debts || [];
+                            recurringTransactions = data.recurring || [];
+                        }
+                        
+                        saveData();
+                        updateDashboard();
+                        renderTransactions();
+                        renderDebts();
+                        showToast('Data imported successfully!');
+                    } else if (file.name.endsWith('.csv')) {
+                        const lines = content.split('\n');
+                        const newTransactions = [];
+                        
+                        for (let i = 1; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (!line) continue;
+                            
+                            const parts = line.split(',');
+                            if (parts.length >= 5) {
+                                newTransactions.push({
+                                    id: Date.now() + i,
+                                    date: parts[0],
+                                    type: parts[1],
+                                    category: parts[2],
+                                    name: parts[3].replace(/"/g, ''),
+                                    amount: parseFloat(parts[4]),
+                                    isDebt: parts[5] === 'true',
+                                    debtorName: parts[6]?.replace(/"/g, '') || null
+                                });
+                            }
+                        }
+                        
+                        if (merge) {
+                            transactions = [...transactions, ...newTransactions];
+                        } else {
+                            transactions = newTransactions;
+                        }
+                        
+                        saveData();
+                        updateDashboard();
+                        renderTransactions();
+                        showToast('CSV imported successfully!');
+                    }
+                    
+                    closeImportModal();
+                } catch (err) {
+                    showToast('Error importing file: ' + err.message);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // ==========================================
+        // THEME & SETTINGS
+        // ==========================================
+        function loadSettings() {
+            const darkMode = localStorage.getItem('darkMode') === 'true';
+            const notifications = localStorage.getItem('notifications') === 'true';
+            
+            if (darkMode) {
+                document.body.setAttribute('data-theme', 'dark');
+                document.getElementById('darkModeToggle').classList.add('active');
+            }
+            
+            if (notifications) {
+                document.getElementById('notificationToggle').classList.add('active');
+            }
+        }
+        
+        function applyTheme() {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            document.getElementById('darkModeToggle').classList.toggle('active', isDark);
+        }
+        
+        function toggleTheme() {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                document.body.removeAttribute('data-theme');
+                localStorage.setItem('darkMode', 'false');
+            } else {
+                document.body.setAttribute('data-theme', 'dark');
+                localStorage.setItem('darkMode', 'true');
+            }
+            
+            applyTheme();
+            updateQuickSettings();
+            
+            // Redraw chart with new colors
+            if (document.getElementById('reportsPage').classList.contains('active')) {
+                updateReports();
+            }
+        }
+        
+        function updateQuickSettings() {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            document.getElementById('quickDarkModeToggle').classList.toggle('active', isDark);
+        }
+        
+        // ==========================================
+        // NOTIFICATIONS
+        // ==========================================
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+        
+        function toggleNotifications() {
+            const toggle = document.getElementById('notificationToggle');
+            const enabled = !toggle.classList.contains('active');
+            
+            if (enabled && 'Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        toggle.classList.add('active');
+                        localStorage.setItem('notifications', 'true');
+                        showToast('Notifications enabled!');
+                        scheduleDebtReminders();
+                    } else {
+                        showToast('Notification permission denied');
+                    }
+                });
+            } else {
+                toggle.classList.remove('active');
+                localStorage.setItem('notifications', 'false');
+                showToast('Notifications disabled');
+            }
+        }
+        
+        function scheduleDebtReminders() {
+            if (debts.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
+                const totalDebt = debts.reduce((sum, d) => sum + d.amount, 0);
+                
+                new Notification('My Book Pro - Debt Reminder', {
+                    body: `You have ₦${totalDebt.toLocaleString()} in outstanding debts from ${debts.length} people.`,
+                    icon: 'icons/icon-192x192.png',
+                    badge: 'icons/icon-72x72.png'
+                });
+            }
+        }
+        
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        function clearForm() {
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemAmount').value = '';
+            document.getElementById('itemCategory').value = 'general';
+            document.getElementById('isDebt').checked = false;
+            document.getElementById('debtorName').value = '';
+            document.getElementById('debtNameGroup').classList.add('hidden');
+            document.getElementById('isRecurring').checked = false;
+            document.getElementById('recurringOptions').classList.add('hidden');
+        }
+        
+        function clearAllData() {
+            if (!confirm('WARNING: This will delete ALL data permanently. Are you sure?')) return;
+            if (!confirm('Really sure? This cannot be undone!')) return;
+            
+            transactions = [];
+            debts = [];
+            recurringTransactions = [];
+            
+            const prefix = currentProfile + '_';
+            localStorage.removeItem(prefix + 'transactions');
+            localStorage.removeItem(prefix + 'debts');
+            localStorage.removeItem(prefix + 'recurring');
+            
+            saveData();
+            updateDashboard();
+            renderTransactions();
+            renderDebts();
+            showToast('All data cleared!');
+        }
+        
+        // ==========================================
+        // WHATSAPP SHARING
+        // ==========================================
+        function shareWhatsApp() {
+            const today = new Date().toDateString();
+            const todayTrans = transactions.filter(t => new Date(t.date).toDateString() === today);
+            
+            let profit = 0;
+            todayTrans.forEach(t => {
+                if (t.type === 'sell') profit += t.amount;
+                else profit -= t.amount;
+            });
+            
+            const message = `📒 My Book Pro - Daily Summary
+📅 ${today}
+💰 Profit: ₦${profit.toLocaleString()}
+📊 Transactions: ${todayTrans.length}
+💳 Debts: ₦${debts.reduce((s,d) => s+d.amount, 0).toLocaleString()}`;
+            
+            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+        }
+        
+        function shareReport() {
+            const period = document.getElementById('reportPeriod').value;
+            const sales = document.getElementById('reportSales').textContent;
+            const expenses = document.getElementById('reportExpenses').textContent;
+            const profit = document.getElementById('reportProfit').textContent;
+            
+            const message = `📈 My Book Pro - Business Report
+📅 Period: ${period}
+💰 Sales: ${sales}
+💸 Expenses: ${expenses}
+📊 Profit: ${profit}
+
+Generated by My Book Pro`;
+            
+            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+        }
+        
+        // ==========================================
+        // EVENT LISTENERS
+        // ==========================================
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                    stopVoice();
+                }
+            });
+        });
+        
+        // Initialize app
+        init();
+    </script>
+</body>
+</html>
